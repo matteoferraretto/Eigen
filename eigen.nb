@@ -1,0 +1,60 @@
+Options[Eigen] = 
+  Join[{Type -> "all", Sorted -> False, HowMany -> 0}, 
+   Options[Eigensystem]];
+Eigen::usage = 
+  "Eigen[H, options] returns eigenvalues or eigenvectors of a \
+hermiteian matrix H depending on the options required. Available \
+options: 
+Type->''values'', ''vectors'' or ''all'' [default] for eigenvalues, \
+eigenvectors or both;
+Sorted->True, False [default] to get them sorted by the smallest \
+eigenvalues;
+HowMany->0, 1, ..., Length@H to select how many eigenstates you need;
+options inherited from Eigensystem, such as \
+Method->{''Arnoldi'',''Criteria''->''RealPart''}. If this is not \
+specified and 0<HowMany<Length@H, the returned eigenstates are not \
+sorted.";
+Eigen::notherm = 
+  "Input matrix is not hermiteian: eigenvalues may not be real and \
+may not be sorted.";
+Eigen::toomany = "Too many eigenstates required.";
+Eigen::notsorted = 
+  "Warning: returned eigenstates are not sorted. Specify the option \
+Method->{''Arnoldi'', ''Criteria''->''RealPart''} to get them sorted.";
+
+Eigen[H_, opts : OptionsPattern[]] := Module[{vals, vecs},
+  If[OptionValue[Sorted] && ! HermitianMatrixQ[H], 
+   Message[Eigen::notherm]];
+  Which[
+   OptionValue[HowMany] > Length@H,
+   Message[Eigen::toomany],
+   (* ---- *)
+   OptionValue[HowMany] == 0 || OptionValue[HowMany] == Length@H,
+   If[
+    OptionValue[Sorted],
+    {vals, vecs} = 
+     SortBy[Eigensystem[H]\[Transpose], First]\[Transpose],
+    (* not sorted *)
+    {vals, vecs} = Eigensystem[H]
+    ],
+   (* ---- *)
+   OptionValue[HowMany] > 0 && OptionValue[HowMany] < Length@H,
+   If[
+    Length@FilterRules[{opts}, Options[Eigensystem]] == 0 && 
+     OptionValue[Sorted] == True,
+    Message[Eigen::notsorted]
+    ];
+   {vals, 
+     vecs} = -Eigensystem[-H, OptionValue[HowMany], 
+      FilterRules[{opts}, Options[Eigensystem]]]
+   ];
+  
+  Which[
+   OptionValue[Type] == "values",
+   Return[vals],
+   OptionValue[Type] == "vectors",
+   Return[vecs],
+   OptionValue[Type] == "all",
+   Return[{vals, vecs}]
+   ];
+  ]
